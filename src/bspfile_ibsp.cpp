@@ -454,10 +454,26 @@ static void AddLightGridLumps( FILE *file, ibspHeader_t *header ){
 
 void LoadIBSPFile( const char *filename ){
 	ibspHeader_t    *header;
-
-
-	/* load the file header */
-	int bspLength = LoadFile( filename, (void**) &header );
+	int bspLength;
+	bool fromVfs = false;
+	if (FileExists(filename) == qfalse) {
+		// try to load the bsp from the pk3 files if it can't be found on the filesystem.
+		// On the command line you need to specify a leading forward slash to stop the cwd path resolution
+		// i.e. /maps/cutscene1
+		// We need to strip that off here because the vfs does not expect it.
+		int startOffset = 0;
+		if (filename[0] == '/') {
+			startOffset = 1;
+		}
+		bspLength = g_vfs.load(filename + startOffset, (void**) &header, 0);
+		fromVfs = true;
+		if (bspLength < 0 || header == nullptr) {
+			Error("LoadIBSPFile: %s not found", filename);
+		}
+	} else {
+		/* load the file header */
+		bspLength = LoadFile( filename, (void**) &header );
+	}
 
 	/* swap the header (except the first 4 bytes) */
 	SwapBlock( (int*) ( (byte*) header + sizeof( int ) ), sizeof( *header ) - sizeof( int ) );
@@ -520,7 +536,13 @@ void LoadIBSPFile( const char *filename ){
 	}
 
 	/* free the file buffer */
-	free( header );
+	if (!fromVfs) {
+		free( header );
+	}
+	else
+	{
+		delete[] (byte*)header;
+	}
 }
 
 

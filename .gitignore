@@ -78,3 +78,6 @@ ipch/
 
 # Build directory
 build/
+
+# mac
+.DS_Store
